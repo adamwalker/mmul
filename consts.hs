@@ -23,3 +23,4 @@ module Main where
         putStrLn $ thing $ (2^4096) `mod` m
         let (gcd, m', r_inv) = extendedGCD m (2^2048)
         putStrLn $ thing (-m')
+        putStrLn $ thing $ (2^2048) `mod` m

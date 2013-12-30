@@ -1,57 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/*
-void big_mul(uint32_t *x, uint32_t *y, uint32_t *z){
-    int i;
-    uint64_t accum=0;
-
-    for(i=0; i<64; i++){
-        int j;
-        for(j=0; j <= i; j++){
-            accum += y[j] * x[i-j];
-        }
-        z[i] = accum;
-        accum >>= 32;
-    }
-
-    for(i=0; i<63; i++){
-        int j;
-        for(j=i; j < 63; j++){
-            accum += y[j+1] * x[63 + i - j];
-        }
-        z[i+64] = accum;
-        accum >>= 32;
-    }
-
-    z[127] = accum >> 32;
-}
-*/
-
-/*
-void big_mul(uint32_t *x, uint32_t *y, uint32_t *z){
-    int i, j;
-
-    for(i=0; i<128; i++){
-        z[i] = 0;
-    }
-
-    for(i=0; i<64; i++){
-        uint32_t carry=0;
-        for(j=0; j<64; j++){
-            int idx = i + j;
-            uint64_t accum  = (uint64_t)z[idx] + ((uint64_t)(z[idx+1]) << 32);
-            uint64_t result = (uint64_t)x[i] * (uint64_t)y[j] + accum;
-            uint32_t carry2 = result < accum;
-            z[idx]          = result & 0xffffffff;
-            uint32_t hi     = (result >> 32) + carry;
-            z[idx+1]        = hi;
-            carry           = (hi == 0 & carry != 0) || carry2;
-        }
-    }
-}
-*/
-
 void mulhilo(uint32_t x, uint32_t y, uint32_t *hi, uint32_t *lo){
     uint64_t res = (uint64_t) x * (uint64_t) y;
     *lo = res;
@@ -80,7 +29,7 @@ void big_mul(uint32_t *z, uint32_t *x, uint32_t *y){
         }
         z[i + 64] = carry;
         //TODO
-        if(i!=63) z[i + 65] = carry >> 32;
+        //if(i!=63) z[i + 65] = carry >> 32;
     }
 }
 
@@ -139,26 +88,35 @@ void mmul(uint32_t *res, uint32_t *x, uint32_t *y, uint32_t *m, uint32_t *mprime
     }
 }
 
-void modexp(uint32_t *res, uint32_t *base, uint32_t *exponent, uint32_t *m, uint32_t *mprime){
+void modexp(uint32_t *res, uint32_t *base, uint32_t *exponent, uint32_t *m, uint32_t *m_prime, uint32_t *r_modp, uint32_t *r2_modp){
     int i, j;
 
     uint32_t base2[64];
-    for(i=0; i<64; i++){
-        base2[i] = base[i];
-    }
+    //convert to montgomery domain. TODO: this isnt necessary for diffie hellman
+    mmul(base2, base, r2_modp, m, m_prime);
 
-    //TODO convert res to montgomery domain
+    for(i=0; i<64; i++){
+        res[i] = r_modp[i];
+    }
 
     for(i=0; i<64; i++){
         uint32_t exp = exponent[i];
         for(j=0; j<32; j++){
             if(exp & 0x1){
-                mmul(res, res, base2, m, mprime);
+                mmul(res, res, base2, m, m_prime);
             }
-            mmul(base2, base2, base2, m, mprime);
+            mmul(base2, base2, base2, m, m_prime);
             exp >>= 1;
         }
     }
+
+    uint32_t one[64];
+    one[0] = 1;
+    for(i=1; i<64; i++){
+        one[i]=0;
+    }
+    
+    mmul(res, res, one, m, m_prime);
 }
 
 uint32_t m[64] = {
@@ -187,6 +145,20 @@ uint32_t r2_modp[64] = {
     0x3aeab8d,  0x66b25557, 0xcd278a9d, 0x3bf43296, 0x6d86b7a2, 0x7d04e4c9,
     0x927ba630, 0x32a3d5f2, 0x16008064, 0xd552f36a, 0x59e84817, 0xf94dcf8d,
     0xc149dead, 0xcbaf2cd,  0xde5c8027, 0x9cd7f320
+};
+
+uint32_t r_modp[64] = {
+    0xf3ef19b1, 0xf53b2001, 0xb18e47e3, 0x30621ac7, 0x5ce08e,   0x810c9c1d,
+    0x94718a46, 0x1c048c3e, 0xb457f5d6, 0x364ac230, 0xe918689c, 0xdc0ef4f1,
+    0xecfbd164, 0x3ade8d1b, 0x36d74d46, 0x419f1963, 0x461a7817, 0x7f32795e,
+    0x6739be5b, 0xcea28a1e, 0xbbcd7c78, 0x3206c533, 0x23f5b792, 0xea678265,
+    0xe02a5f8b, 0x8cef08ed, 0x21ce1023, 0xd87d8c38, 0xbea26ccf, 0xe9fd18eb,
+    0x43767a24, 0x7ed79ecf, 0x8f6e77c9, 0x4c4075ce, 0x463b68f7, 0x95ff1f5f,
+    0x7443d841, 0x3945f4d3, 0x12cb2409, 0x360672ee, 0x493eddf8, 0x852a482f,
+    0xaa48c6b4, 0x26e17010, 0x1025b207, 0x6fc83612, 0x52953ded, 0x92c07ead,
+    0xed8b5f59, 0xe21947a5, 0xcf63e7f1, 0x14c29775, 0x845e20ea, 0x5065c3bf,
+    0x6a5a924,  0x1905ebe2, 0x49e2f58a, 0x4ab4ea68, 0x97c4602e, 0x5df29b1a,
+    0x6aa63ae0, 0x299f0558, 0x6edc562f, 0x52ef81e1
 };
 
 uint32_t m_prime[64] = {
@@ -234,6 +206,7 @@ uint32_t y[64] = {
 };
 
 int main(){
+    /*
     uint32_t res[64], res2[64], x_m[64], y_m[64], one[64];
     int i;
 
@@ -254,6 +227,15 @@ int main(){
 
     for(i=0; i<64; i++){
         printf("%x, ", res2[i]);
+    }
+    */
+
+    uint32_t res[64];
+    modexp(res, x, y, m, m_prime, r_modp, r2_modp);
+
+    int i;
+    for(i=0; i<64; i++){
+        printf("%x, ", res[i]);
     }
 }
 
