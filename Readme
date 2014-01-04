@@ -1,0 +1,9 @@
+Simple, unoptimised implementation of Montgomery multiplication and modular exponentiation intended for RSA encryption and Diffie Hellman key exchange schemes. 
+
+Montgomery multiplication is an efficient modular multiplication algorithm. 
+
+Based on: http://www.hackersdelight.org/hdcodetxt/mont64.c.txt
+
+crypto.c  - Modular arithmetic functions
+run.c     - A test program
+consts.hs - Haskell program to precompute constants needed for Montgomery multiplication
