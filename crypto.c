@@ -7,7 +7,6 @@ void mulhilo(uint32_t x, uint32_t y, uint32_t *hi, uint32_t *lo){
     *hi = res >> 32;
 }
 
-//TODO, what about the carry at the end
 void big_mul(uint32_t *z, uint32_t *x, uint32_t *y){
     int i, j;
 
@@ -30,6 +29,29 @@ void big_mul(uint32_t *z, uint32_t *x, uint32_t *y){
         z[i + 64] = carry;
         //TODO
         //if(i!=63) z[i + 65] = carry >> 32;
+    }
+}
+
+void big_mul_low(uint32_t *z, uint32_t *x, uint32_t *y){
+    int i, j;
+
+    for(i=0; i<64; i++){
+        z[i] = 0;
+    }
+
+    for(i=0; i<64; i++){
+        uint64_t carry = 0;
+        for(j=0; j<64; j++){
+            int idx = i + j;
+            if(idx<64){
+                uint32_t lo, hi;
+                mulhilo(x[i], y[j], &hi, &lo);
+
+                uint64_t accum  = z[idx] + carry + lo;
+                carry           = (accum >> 32) + hi;
+                z[idx]          = accum;
+            }
+        }
     }
 }
 
@@ -69,12 +91,12 @@ uint32_t leq(int count, uint32_t *x, uint32_t *y){
 }
 
 void mmul(uint32_t *res, uint32_t *x, uint32_t *y, uint32_t *m, uint32_t *mprime){
-    uint32_t t[128], tm[128], tmm[128], u[128];
+    uint32_t t[128], tm[64], tmm[128], u[128];
 
     int i;
 
     big_mul(t, x, y);
-    big_mul(tm, t, mprime);
+    big_mul_low(tm, t, mprime);
     big_mul(tmm, tm, m);
 
     uint32_t ov = big_add(128, u, t, tmm);
@@ -205,6 +227,34 @@ uint32_t y[64] = {
      0x21EF2054, 0x4CA7B18F, 0x60EDBD48, 0x2E775066, 0x73134D0B, 0x3FB32C9B
 };
 
+uint32_t r1[64] = {
+    0x775dc713, 0x4c086acb, 0xc00d9adb, 0xee86f71d, 0xc29f99b6, 0x6212ac07,
+    0xed85c6dd, 0x734ac6c9, 0xa2937ff9, 0xe242cfb6, 0x1f8065ea, 0x69a57a75,
+    0x9237befc, 0x64431258, 0x79ed554d, 0x182da473, 0xa7d65c06, 0x1cbf2c36,
+    0xf32f00b, 0x64a3feae, 0xff16e94c, 0xceb78a0f, 0xad0228ac, 0x1ff9c335,
+    0xba0f4a78, 0xe86a097e, 0xba5e9eb, 0x5e1f6a07, 0x341e1477, 0x9a314f12,
+    0xd5daff22, 0xd8b9c99, 0x83ed7723, 0xcc9c4944, 0x293c7171, 0x79c38dbf,
+    0xd85afec7, 0xcc2cb39f, 0xcf3e0609, 0x5c89ed39, 0xbedbda30, 0xcde41c64,
+    0xe44e9515, 0xd42398b3, 0xe5712598, 0x7b9b32bb, 0x194b9a7e, 0x9fce5b9d,
+    0x36274209, 0xa0ff4f59, 0xd0bde9ae, 0x79b537a4, 0xf13cd019, 0xff419a4,
+    0xa5cdfaa0, 0x30d284b, 0xa123b384, 0x93f516d0, 0x33f1d506, 0xfa3a9fca,
+    0x9092fef0, 0x9c882165, 0xac070171, 0xb1cf880b
+};
+
+uint32_t r2[64] = {
+    0x1a34febe, 0xcae22663, 0x1cfabd65, 0xdfbbee7e, 0xce892108, 0x39369a4a,
+    0xcc6d84e, 0xb35c557b, 0x71f60411, 0x24ca9567, 0x874d48be, 0x51383311,
+    0xedd108ce, 0x2e531f17, 0xf3f17585, 0x95e1be19, 0xbf6bc835, 0x78e3191a,
+    0x5b340f81, 0xc42f40cd, 0xadf020a, 0x1a15d7d3, 0x7169eeb8, 0xd743c98c,
+    0xd5489e7a, 0x77820a14, 0x99b33aa8, 0x96d17c23, 0x4ff119b8, 0xd89fa470,
+    0x2f501942, 0xbc4f6f12, 0x16316ebf, 0xfa0bc6dd, 0x168c6229, 0xe3ef37c3,
+    0xbf920790, 0xbaa5f742, 0x5416ffb7, 0x46ed6850, 0x4fbfa58c, 0x35e5d756,
+    0x4a32b0cb, 0x942bfd5d, 0x86765283, 0xbf6e53ac, 0xd3067181, 0x5f2c6c24,
+    0x7cc08a73, 0xfed04330, 0x4f243115, 0x1502cc1d, 0xcc48d44f, 0x6d53aded,
+    0x19f3834c, 0x4dcda5d0, 0xb4b2b457, 0xccc4421d, 0x3be3fda0, 0x355db612,
+    0x18e063ab, 0xa2c7a26b, 0xaef9dccc, 0xcdee1fe4
+};
+
 int main(){
     /*
     uint32_t res[64], res2[64], x_m[64], y_m[64], one[64];
@@ -230,6 +280,7 @@ int main(){
     }
     */
 
+    /*
     uint32_t res[64];
     modexp(res, x, y, m, m_prime, r_modp, r2_modp);
 
@@ -237,5 +288,24 @@ int main(){
     for(i=0; i<64; i++){
         printf("%x, ", res[i]);
     }
+    */
+
+    uint32_t s1[64], s2[64], p1[64], p2[64];
+
+    modexp(p1, y,  r1, m, m_prime, r_modp, r2_modp);
+    modexp(s1, p1, r2, m, m_prime, r_modp, r2_modp);
+
+    modexp(p2, y,  r2, m, m_prime, r_modp, r2_modp);
+    modexp(s2, p2, r1, m, m_prime, r_modp, r2_modp);
+
+    int i;
+    for(i=0; i<64; i++){
+        printf("%x, ", s1[i]);
+    }
+    printf("\n\n\n\n");
+    for(i=0; i<64; i++){
+        printf("%x, ", s2[i]);
+    }
+
 }
 
